@@ -1,0 +1,76 @@
+<script>
+    (function () {
+    console.log("Entering Custom HTML Tag Script v8");
+        var timeout = 10000; // 1000000ms = 10 seconds
+
+        // This is the promise code, so this is the useful bit
+        function ensureUserIsSet(timeout) {
+            var start = Date.now();
+            return new Promise(waitForUser); // set the promise object within the ensureUserIsSet object
+
+            // waitForUser makes the decision whether the condition is met
+            // or not met or the timeout has been exceeded which means
+            // this promise will be rejected
+            function waitForUser(resolve, reject) {
+                console.log("Waiting for user");
+                if (typeof amplitudeGTM !== 'undefined' && typeof amplitudeGTM.getDeviceId() !== "undefined") {
+                    console.log("Resolving with deviceID " + window.amplitudeGTM.getDeviceId());
+                    resolve(amplitudeGTM.getDeviceId());
+                } else if (timeout && (Date.now() - start) >= timeout) {
+                    console.log("Rejecting");
+                    reject(new Error("timeout"));
+                } else {
+                    console.log("Resetting timeout");
+                    setTimeout(waitForUser.bind(this, resolve, reject), 30);
+                }
+            }
+        }
+
+        // This runs the promise code
+        ensureUserIsSet(timeout).then(function () {
+            console.log("Getting ready to decorate");
+            var domainsToDecorate = [
+                'foo.com', 'anotherdomain.com' //add or remove domains (without https or trailing slash)
+            ],
+                queryParams = [
+                    'utm_campaign', //add or remove query parameters you want to transfer
+                    'utm_source',
+                    'utm_medium',
+                ]
+            // do not edit anything below this line
+            var links = document.querySelectorAll('a');
+            // check if links contain domain from the domainsToDecorate array and then decorates
+            for (var linkIndex = 0; linkIndex < links.length; linkIndex++) {
+                console.log("Checking " + links[linkIndex] + " for decoration.");
+                for (var domainIndex = 0; domainIndex < domainsToDecorate.length; domainIndex++) {
+                    if (links[linkIndex].href.indexOf(domainsToDecorate[domainIndex]) > -1 && links[linkIndex].href.indexOf("#") === -1) {
+                        links[linkIndex].href = decorateUrl(links[linkIndex].href);
+                    }
+                }
+            }
+            // decorates the URL with query params
+            function decorateUrl(urlToDecorate) {
+                console.log("Decorating URL " + urlToDecorate);
+                urlToDecorate = (urlToDecorate.indexOf('?') === -1) ? urlToDecorate + '?' : urlToDecorate + '&';
+                var collectedQueryParams = [];
+                for (var queryIndex = 0; queryIndex < queryParams.length; queryIndex++) {
+                    if (getQueryParam(queryParams[queryIndex])) {
+                        collectedQueryParams.push(queryParams[queryIndex] + '=' + getQueryParam(queryParams[queryIndex]))
+                    }
+                }
+                var ampDeviceId = amplitudeGTM.getDeviceId();
+                console.log("Amplitude Device ID= " + ampDeviceId);
+                collectedQueryParams.push('deviceId=' + ampDeviceId);
+                return urlToDecorate + collectedQueryParams.join('&');
+            }
+            // borrowed from https://stackoverflow.com/questions/831030/
+            // a function that retrieves the value of a query parameter
+            function getQueryParam(name) {
+                if (name = (new RegExp('[?&]' + encodeURIComponent(name) + '=([^&]*)')).exec(window.location.search))
+                    return decodeURIComponent(name[1]);
+            }
+        });
+    console.log("Exiting Custom HTML Tag Script");
+    })();
+</script>
+
